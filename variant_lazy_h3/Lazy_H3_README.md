@@ -1,231 +1,255 @@
-README — Variant: Lazy H3 + Multi-Sampling State-Time Pipeline
+# **Lazy H3 + Multi-Sampling State-Time Pipeline**
 
-This pipeline computes per-state driving time for long-distance truck routes across North America without raw GPS timestamps.
-It uses:
+This pipeline computes **per-state driving time** for long-distance truck routes across North America **without using raw GPS timestamps**.
 
-Valhalla modelled time (maneuvers[].time) — deterministic per-edge travel time
+It combines:
 
-Route geometries (decoded polylines)
-
-Nominatim reverse-geocoding — identifying the correct US state
-
-Lazy H3 caching — fast repeated state lookups
-
-Polars analytics — scalable, columnar data processing
+* **Valhalla modelled time** (`maneuvers[].time`) — deterministic per-edge travel time
+* **Route geometries** (decoded polyline shapes)
+* **Nominatim reverse-geocoding** — determining the correct U.S. state
+* **Lazy H3 caching** — fast, repeatable spatial lookups
+* **Polars analytics** — high-performance columnar processing
 
 The system supports:
 
-231 intercity routes (all pairwise combinations of the top 22 US metro regions)
+* **231 intercity routes** (all pairwise combinations of the top 22 U.S. metropolitan regions)
+* **High spatial precision** using multi-point sampling along maneuvers
+* **High throughput** via H3 caching
+* Fully **parallelizable and reproducible** processing
 
-High precision via multi-sampling per maneuver
+Final artifacts include:
 
-High throughput via H3 cell caching
+* A unified **analytics.parquet**
+* Analytical tables such as per-state totals and per-trip summaries
 
-Fully parallelizable, scalable design
+---
 
-Final outputs include:
+## **1. Architecture Summary**
 
-A unified analytics.parquet
+Valhalla provides the **canonical spatiotemporal foundation**:
 
-Multiple aggregated analytical tables (per-state totals, per-trip summaries, etc.)
+* `maneuvers[].time` → **truck-accessible network time**
+* Polyline geometry → **route shape with high spatial fidelity**
+* Deterministic outputs → **consistent results across machines**
 
-1. Architecture Summary
+Each maneuver is mapped to a U.S. state using:
 
-Valhalla is used as the canonical spatiotemporal source:
+1. **Decoded geometry**
+2. **Evenly spaced sampling points**
+3. **Reverse-geocoding via Nominatim**
+4. **Majority-vote state assignment**
 
-maneuvers[].time = network travel time (no delays, no idling, no stops)
+This results in **high-accuracy state classification**, even near borders.
 
-Polyline geometry = exact spatial alignment
+---
 
-Deterministic results = reproducible across machines
+## **2. Core Pipeline Steps**
 
-We compute per-state time by associating each maneuver’s geometry with its most likely state, validated via multi-sampling + reverse-geocoding.
+### **Step 1 — Fetch 231 Route JSONs**
 
-2. Core Pipeline Steps
-Step 1 — Fetch 231 Route JSONs
+Generates every city-pair combination and fetches Valhalla routes.
 
-Generates all pairwise city combinations and queries Valhalla.
+* **Script:** `bin/fetch_231_routes.py`
+* **Output:** `variant_lazy_h3/routes_in/CityA_to_CityB.json`
 
-Script:
-bin/fetch_231_routes.py
+---
 
-Output:
-variant_lazy_h3/routes_in/CityA_to_CityB.json
+### **Step 2 — Build Lazy H3 Reverse-Geocode Cache**
 
-Step 2 — Build Lazy H3 Reverse-Geocode Cache
+* **Script:** `bin/build_h3_state_map.py`
+* **Purpose:** Map **H3 R=9** cells → U.S. states
+* **Cache file:** `variant_lazy_h3/cache/h3/h3_lazy_r9.parquet`
 
-Script:
-bin/build_h3_state_map.py
+**Why:**
+Reverse-geocoding every coordinate is too slow.
+H3 caching yields **85–99% cache-hit rate**, which dramatically accelerates processing.
 
-Purpose:
-Precompute H3 resolution-9 cells mapped to US states.
+---
 
-Why:
-Reverse-geocoding each coordinate is slow.
-Caching yields 85–99% cache hits for real-world truck networks.
+### **Step 3 — Multi-Sampling + Maneuver-Level State Detection**
 
-Cache file:
-variant_lazy_h3/cache/h3/h3_lazy_r9.parquet
+* **Script:** `bin/process_routes_midpoint_lazy_reverse.py`
 
-Step 3 — Multi-Sampling + Maneuver-Level State Detection
+#### **3.1 Decode route geometry**
 
-Script:
-bin/process_routes_midpoint_lazy_reverse.py
+* Polyline → ordered `(lat, lon)` coordinates
+* Maneuver indices (`begin_shape_index`, `end_shape_index`) define geometry slices
 
-Pipeline:
-
-3.1 Decode route geometry
-
-Polyline → list of (lat, lon) points
-
-Maneuver indices define geometry slices
-
-3.2 Multi-sample each maneuver
+#### **3.2 Multi-sample each maneuver**
 
 For each maneuver:
 
-Take N evenly spaced samples (default 5)
+* Sample **N points** (default: 5)
+* Reverse-geocode each sample
+* Use **majority vote** to assign a state
 
-Reverse-geocode each sample
+This corrects:
 
-Apply majority voting → assign a state
+* Mid-edge misclassification
+* Border jitter
+* Nominatim noise
+* False positives near narrow boundaries
 
-This removes:
+#### **3.3 Attribute time to states**
 
-Mid-edge misclassification
+```
+maneuver.time → drive_seconds in the detected state
+```
 
-Border noise
+#### **3.4 Write per-route breakdown**
 
-Nominatim jitter
+Outputs saved to:
 
-False positives near narrow boundaries
-
-3.3 Attribute time to states
-maneuver.time → seconds in detected state
-
-3.4 Write per-route breakdown
-
-Output files stored at:
-
+```
 variant_lazy_h3/outputs/by_trip/<CityA_to_CityB>.parquet
+```
 
-Each row:
+Row schema:
 
+```
 vehicle_id | trip_id | state | drive_seconds | leg_seconds_total
+```
 
-3. Master Analytics Table
+---
 
-After all trips are processed:
+## **3. Master Analytics Table**
 
-Script:
-bin/build_top_analytics.py
+After processing all trips:
 
-Input:
-analytics.parquet (merged output of all per-trip files)
+* **Script:** `bin/build_top_analytics.py`
+* **Input:** `analytics.parquet`
+* **Output directory:** `variant_lazy_h3/outputs/analytics/`
 
-Output directory:
-variant_lazy_h3/outputs/analytics/
+### **Generated summary tables**
 
-Generated analytical tables
-1. Per-state totals
+#### **1. Per-state totals**
 
-state_totals.csv / .parquet
+Files:
 
-Columns include:
-state, total_drive_seconds, num_trips, total_drive_hours, avg_hours_per_trip
+* `state_totals.csv`
+* `state_totals.parquet`
 
-2. Per-trip summaries
+Columns:
 
-trip_summary.csv / .parquet
+```
+state | total_drive_seconds | num_trips | total_drive_hours | avg_hours_per_trip
+```
 
-Columns include:
-trip_id, total_drive_seconds, num_states, total_drive_hours
+#### **2. Per-trip summaries**
 
-3. Per-state-per-trip (>=1 hour)
+Files:
 
-per_state_trip_ge1h.csv / .parquet
+* `trip_summary.csv`
+* `trip_summary.parquet`
 
-Columns include:
-trip_id, state, drive_hours
+Columns:
 
-4. Accuracy, Limitations & Approximations
-Strengths
+```
+trip_id | total_drive_seconds | num_states | total_drive_hours
+```
 
-True geometry sampling → high spatial fidelity
+#### **3. Per-state-per-trip (≥1 hour)**
 
-Majority voting → robust to border noise
+Files:
 
-H3 caching → deterministic state resolution
+* `per_state_trip_ge1h.csv`
+* `per_state_trip_ge1h.parquet`
 
-Model time → consistent across all routes
+Columns:
 
-Known Approximations
+```
+trip_id | state | drive_hours
+```
 
-Valhalla time = network time only
-(ignores stops, delays, fuel breaks, weather)
+---
 
-State detection uses sampling, not full polygon slicing
-→ but tests show 98–99.8% accuracy on interstate corridors
+## **4. Accuracy, Limitations & Approximations**
 
-Narrow borders (WV, MD, DE) may benefit from increasing samples from 5 → 7–9
+### **Strengths**
 
-Why This Is Acceptable
+* Multi-sampling → **precise spatial inference**
+* Majority voting → robust to noise
+* H3 caching → extremely fast lookups
+* Model time → consistent across all routes
 
-For real logistics analytics:
+### **Known Approximations**
 
-You want drive-time-in-state, not real wall-clock time
+* Valhalla time = **network time only**
+  (excludes stops, delays, idling, fuel breaks, congestion)
+* State classification is sampling-based, not polygon-split
+  → but measured **98–99.8% accuracy** on interstate corridors
+* Narrow border states (WV, MD, DE) may require `N=7–9` samples
 
-Model time is reproducible and noise-free
+### **Why It’s Acceptable**
 
-Multi-sampling eliminates nearly all border errors
+For logistics analytics:
 
-Pipeline handles thousands of routes per second
+* Goal is **drive-time-in-state**, not real-world clock time
+* Model time is smooth and reproducible
+* Sampling avoids expensive geometry operations
+* Pipeline scales to **thousands of routes per second**
 
-5. Performance Characteristics
+---
 
-H3 lookup: microseconds
+## **5. Performance Characteristics**
 
-Sampling: O(route_length)
+* **H3 lookup:** microseconds
+* **Sampling:** linear in route length
+* No expensive polygon operations in the hot path
+* **Polars:** extremely fast in analytics workloads
 
-No polygon intersection in the hot path
+### **Scalability**
 
-Polars: extremely fast grouping + aggregation
+* ~**1000+ routes per second** on standard cloud hardware
+* H3 cache re-use is very high across similar corridors
 
-Scales to:
+---
 
-~1000+ routes/sec on mid-range cloud VMs
+## **6. How to Run the Pipeline**
 
-Nearly all lookups served from H3 cache
+### **1. Activate the environment**
 
-6. How to Run End-to-End
-1. Activate the environment
+```bash
 source variant_lazy_h3/.venv/bin/activate
+```
 
-2. Fetch all Valhalla routes
+### **2. Fetch all Valhalla routes**
+
+```bash
 python bin/fetch_231_routes.py
+```
 
-3. Build H3 lazy state map
+### **3. Build the H3 lazy state map**
+
+```bash
 python bin/build_h3_state_map.py 9 --save-polygons
+```
 
-4. Process all routes (multi-sampling)
+### **4. Process routes using multi-sampling**
+
+```bash
 python bin/process_routes_midpoint_lazy_reverse.py
+```
 
-5. Build analytical tables
+### **5. Build analytical tables**
+
+```bash
 python bin/build_top_analytics.py
+```
 
-7. Future Extensions
+---
 
-Add Canada/Mexico polygon support
+## **7. Future Extensions**
 
-Increase sampling density near state borders
+* Add Canada + Mexico polygon support
+* Adaptive sampling based on border proximity
+* Hybrid mode using real GPS timestamps
+* Corridor-level clustering and fleet analytics
+* Toll-zone and border-crossing profiling
 
-Add hybrid mode with real GPS timestamps
+---
 
-Perform fleet-level clustering and corridor analytics
+## **8. License**
 
-Compute border-crossing durations & toll-zone profiling
+Open-source research pipeline using Valhalla + Nominatim data, compliant with the **ODbL** license.
 
-8. License
-
-Open-source research pipeline using Valhalla and Nominatim contributions
-Compliant with the ODbL license requirements.
