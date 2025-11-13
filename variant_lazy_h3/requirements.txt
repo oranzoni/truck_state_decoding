@@ -1,0 +1,14 @@
+# core fast path
+h3>=3.7.6
+polyline>=2.0
+orjson>=3.10.7
+polars>=1.9.0
+tqdm>=4.66.4
+rich>=13.9.4
+
+# optional (border-aware refinement / polygons)
+shapely>=2.0.6         # geometry ops, if you enable border-buffer exact splits
+pyproj>=3.6.1          # CRS transforms (if you ever need them)
+
+# optional (alt JSON / parsing)
+simdjson>=6.0.2

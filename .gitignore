@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+
+# venv
+.venv/
+venv/
+env/
+
+# Data
+*.pbf
+*.tar
+*.osm
+*.geojson
+data/
+cache/
+outputs/
+
+# IDE
+.vscode/
+.idea/
+
+# System crap
+.DS_Store
+Thumbs.db
+
