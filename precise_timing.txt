@@ -1,0 +1,5 @@
+python: can't open file '/home/apojskic/routing-state-time/bin/process_routes_precise_sampling.py': [Errno 2] No such file or directory
+
+real	0m0.009s
+user	0m0.009s
+sys	0m0.000s

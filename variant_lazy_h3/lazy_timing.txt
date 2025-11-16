@@ -1,0 +1,6 @@
+/home/apojskic/routing-state-time/variant_lazy_h3/bin/process_routes_midpoint_lazy_reverse.py:56: DataOrientationWarning: Row orientation inferred during DataFrame construction. Explicitly specify the orientation by passing `orient="row"` to silence this warning.
+  df = pl.DataFrame(
+
+real	0m4.838s
+user	0m4.853s
+sys	0m0.223s

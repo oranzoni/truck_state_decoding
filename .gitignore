@@ -1,26 +1,13 @@
-# Python
-__pycache__/
-*.pyc
-
-# venv
+# Python envs
 .venv/
-venv/
-env/
+**/.venv/
 
-# Data
-*.pbf
-*.tar
-*.osm
-*.geojson
-data/
+# Outputs / analytics
+**/outputs/
+analytics.parquet
+*.parquet
+
+# Caches
 cache/
-outputs/
-
-# IDE
-.vscode/
-.idea/
-
-# System crap
-.DS_Store
-Thumbs.db
+**/cache/
 
