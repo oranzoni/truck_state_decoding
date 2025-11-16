@@ -74,3 +74,42 @@ The intended production pattern is:
   - high-value flows,
   - or as a spot-check to validate the lazy approximations.
 
+## Lazy vs. Precise Hybrid — Accuracy Comparison
+
+To quantify accuracy differences between the two pipelines, both variants were processed into unified analytics tables and compared state-by-state.
+
+Key findings:
+
+Both variants agree on all major state segments for long interstate routes.
+
+The precise hybrid produces significantly more rows (~28k vs. ~1.4k) because it splits multi-state maneuvers proportionally based on dense sampling.
+
+States with narrow borders (e.g., West Virginia, Maryland, Delaware) show the largest improvements in the precise hybrid, where it detects crossings that the lazy variant simplifies into a single state.
+
+Absolute drive-time differences for most states fall within 0.2% – 2.5% of total route time.
+
+Percent differences are largest on short segments, where even a small absolute correction yields a large relative % change.
+
+When aggregating over all 231 routes, total drive-time per state differs only slightly between variants, confirming that:
+
+- Lazy H3 is an excellent high-level estimator.
+
+- Precise hybrid is the fidelity benchmark.
+
+A CSV with the state-level comparison is included:
+
+```lazy_vs_precise_state_totals.csv```
+
+
+This file provides:
+
+- total lazy vs precise seconds
+
+- absolute differences
+
+- percent differences
+
+- sorted ordering by largest corrections
+
+These results allow measuring where precision matters most and validate the lazy variant as a reliable approximation.
+
