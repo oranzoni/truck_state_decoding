@@ -235,7 +235,7 @@ def process_route_file(fp):
         pl.col("drive_seconds").round(0).cast(pl.Int64)
     )
 
-    # If leg_seconds_total is known, you could re-scale per trip later if desired.
+    
 
     out_fp = OUT_DIR / f"{trip_id}.parquet"
     df.write_parquet(out_fp)
