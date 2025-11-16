@@ -13,15 +13,22 @@ from collections import Counter
 # ---------------------------------------------------------------------
 # Paths & Config
 # ---------------------------------------------------------------------
-PROJ = os.path.expanduser("~/state-time")
-ROUTES_DIR = os.environ.get("ROUTES_DIR", f"{PROJ}/routes_in")
-OUT_DIR = os.environ.get("OUT_DIR", f"{PROJ}/outputs/by_trip")
-CACHE_DIR = os.path.join(PROJ, "cache", "h3")
-NOM_URL = os.environ.get("NOM_URL", "http://localhost:8080")
-H3_RES = int(os.environ.get("H3_RES", "9"))
+import os
+import pathlib
 
-os.makedirs(OUT_DIR, exist_ok=True)
-os.makedirs(CACHE_DIR, exist_ok=True)
+# Hard-coded lazy variant root
+BASE = pathlib.Path("/home/apojskic/routing-state-time/variant_lazy_h3")
+
+ROUTES_DIR = BASE / "routes_in"
+OUT_DIR = BASE / "outputs" / "by_trip"
+CACHE_DIR = BASE / "cache" / "h3"
+
+NOM_URL = "http://localhost:8080"
+H3_RES = 9
+
+# Ensure directories exist
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 CACHE_FILE = os.path.join(CACHE_DIR, f"h3_lazy_r{H3_RES}.parquet")
 

@@ -1,0 +1,1 @@
+vehicle_id,trip_id,state,drive_seconds_lazy,leg_seconds_total,vehicle_id_precise,trip_id_precise,state_precise,drive_seconds_precise,leg_seconds_total_precise,difference_sec,pct_diff
