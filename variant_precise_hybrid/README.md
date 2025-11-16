@@ -1,4 +1,4 @@
-**Variant: Precise Hybrid — Dense Geometry Sampling + Proportional Time Splitting**
+### Variant: Precise Hybrid — Dense Geometry Sampling + Proportional Time Splitting**
 
 This variant computes high-precision per-state truck driving time by combining:
 
