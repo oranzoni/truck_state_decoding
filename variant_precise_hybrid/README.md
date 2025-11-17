@@ -38,8 +38,8 @@ The precise hybrid variant eliminates these issues by:
 
 This produces ~99–99.9% correct attribution of driving time per state.
 
-## 2. Core Algorithm
-# Step 1 — Load Valhalla Route Data
+# 2. Core Algorithm
+## Step 1 — Load Valhalla Route Data
 
 Each JSON route includes:
 
@@ -51,7 +51,7 @@ Each JSON route includes:
 
 The script extracts the polyline slice for each maneuver using its begin_shape_index and end_shape_index.
 
-# Step 2 — Dense Geometry Sampling
+## Step 2 — Dense Geometry Sampling
 
 Each maneuver is densely sampled at regular distance intervals.
 
@@ -61,7 +61,7 @@ Produces typically 10–20 sample points per maneuver
 
 Configurable using ```SAMPLE_STEP_METERS```
 
-# Procedure:
+## Procedure:
 
 - Decode the maneuver geometry
 
@@ -77,7 +77,7 @@ Configurable using ```SAMPLE_STEP_METERS```
 
 ```[US:California, US:California, US:California, US:Nevada, US:Nevada, US:Nevada]```
 
-# Step 3 — Proportional Time Splitting
+## Step 3 — Proportional Time Splitting
 
 Sampled points are grouped by consecutive state segments.
 
@@ -101,7 +101,7 @@ This correctly handles maneuvers that:
 
 - Curve across diagonal boundaries
 
-# Step 4 — Output Format
+## Step 4 — Output Format
 
 Each processed trip produces rows like:
 
@@ -118,7 +118,7 @@ Expected volume:
 
 Each state transition is captured precisely
 
-# 3. Analytics
+## 3. Analytics
 
 After processing all trips:
 
@@ -138,7 +138,7 @@ containing aggregated:
 
 - Per-state contributions across the dataset
 
-# 4. Performance Characteristics
+## 4. Performance Characteristics
 
 The precise variant is slower because each maneuver is sampled many times.
 
@@ -152,7 +152,7 @@ It performs significantly more computation due to:
 
 - Larger analytic datasets
 
-# Benchmark:
+## Benchmark:
 
 Wall time: 22 minutes 35 seconds
 
@@ -166,7 +166,7 @@ Rows produced	~1,484	~28,113
 
 The runtime increase is expected and normal.
 
-# 5. Running the Precise Hybrid Pipeline
+## 5. Running the Precise Hybrid Pipeline
 Activate the environment
 ```cd ~/routing-state-time/variant_precise_hybrid```
 ```source .venv/bin/activate```
@@ -180,7 +180,7 @@ Process all routes
 Build aggregated analytics
 ```python bin/build_precise_analytics.py```
 
-# 6. Future Enhancements
+## 6. Future Enhancements
 
 - Adaptive sampling (higher density near borders)
 
