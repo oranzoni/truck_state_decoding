@@ -38,8 +38,8 @@ The precise hybrid variant eliminates these issues by:
 
 This produces ~99–99.9% correct attribution of driving time per state.
 
-# 2. Core Algorithm
-Step 1 — Load Valhalla Route Data
+## 2. Core Algorithm
+# Step 1 — Load Valhalla Route Data
 
 Each JSON route includes:
 
