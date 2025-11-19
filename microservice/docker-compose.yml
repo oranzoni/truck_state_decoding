@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  truck-classifier:
+    build: .
+    container_name: truck-state-classifier
+    ports:
+      - "8444:8444"
+    environment:
+      - H3_RESOLUTION=9
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount shapefile directory for cache building
+      - /home/sbanjac/stateclassifier/data:/data:ro
+      # Mount cache directory for persistence
+      - ./cache:/app/cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8444/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
